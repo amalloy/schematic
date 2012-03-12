@@ -85,3 +85,7 @@
                                             :fields {:a1 {:type :int}}}
                                         :b {:type :enum :values #{1 2 3}}})
                         [:a :a1]))))
+
+(deftest strings
+  (let [schema (schema/struct {:id {:type :string}})]
+    (is (schema/matches? {"id" "nothing"} schema))))

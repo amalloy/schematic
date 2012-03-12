@@ -31,13 +31,14 @@
   (and (or (nil? node)
            (map? node))
        (every? true? (for [[k v] node]
-                       (let [field-schema (get fields k)]
+                       (let [field-schema (get fields (keyword k))]
                          (and field-schema
                               (matches? v field-schema)))))
        (or *ignore-required-fields*
            (every? true? (for [[field-name schema] fields
                                :when (:required schema)]
-                           (contains? node field-name))))))
+                           (some #(contains? node %)
+                                 ((juxt keyword name) field-name)))))))
 
 (defmethod matches? :map [node schema]
   (or (nil? node)
