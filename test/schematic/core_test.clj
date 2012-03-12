@@ -31,7 +31,10 @@
                              :fields {:c {:type :int}}}}}]
     (is (schema/matches? {:b {:c 4}} schema))
     (is (schema/matches? {:a "test" :b nil} schema))
-    (is (not (schema/matches? {:a "foo"} schema)))))
+    (let [accept-missing #(schema/matches? {:a "foo"} schema)]
+      (is (not (accept-missing)))
+      (is (binding [schema/*ignore-required-fields* true]
+            (accept-missing))))))
 
 (deftest enums
   (let [schema {:type :enum
@@ -75,3 +78,10 @@
           :required true}
          (schema/struct {:a {:type :int}}
                         :required true))))
+
+(deftest selection
+  (is (= {:type :int}
+         (schema/get-in (schema/struct {:a {:type :struct
+                                            :fields {:a1 {:type :int}}}
+                                        :b {:type :enum :values #{1 2 3}}})
+                        [:a :a1]))))

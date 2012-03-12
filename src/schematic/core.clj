@@ -1,8 +1,9 @@
 (ns schematic.core
-  (:refer-clojure :exclude [struct])
   (:use [useful.fn :only [given]]
         [useful.string :only [classify]]
-        [useful.utils :only [verify]]))
+        [useful.utils :only [verify]])
+  (:refer-clojure :exclude [struct get-in])
+  (:require [clojure.core :as core]))
 
 (defn- boolean? [x] ;; really? no boolean? function in core?
   (or (true? x) (false? x)))
@@ -12,6 +13,11 @@
      {:type :struct, :fields fields})
   ([fields & struct-options]
      (apply assoc (struct fields) struct-options)))
+
+(defn get-in [schema fields]
+  (core/get-in schema (interleave (repeat :fields) fields)))
+
+(def ^:dynamic *ignore-required-fields* false)
 
 (defmulti matches? (fn [node schema] (:type schema)))
 
@@ -28,9 +34,10 @@
                        (let [field-schema (get fields k)]
                          (and field-schema
                               (matches? v field-schema)))))
-       (every? true? (for [[field-name schema] fields
-                           :when (:required schema)]
-                       (contains? node field-name)))))
+       (or *ignore-required-fields*
+           (every? true? (for [[field-name schema] fields
+                               :when (:required schema)]
+                           (contains? node field-name))))))
 
 (defmethod matches? :map [node schema]
   (or (nil? node)
