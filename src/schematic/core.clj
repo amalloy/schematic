@@ -80,6 +80,69 @@
       (when-let [validator (get known-types type)]
         (validator node)))))
 
+
+(defmulti error (fn [node schema] (:type schema)))
+
+(defmethod error :struct [node {:keys [fields]}]
+  (or (and node (not (map? node))
+           (format "Expected struct, found %s" (class node)))
+
+      (some identity
+            (for [[k v] node]
+              (let [field-schema (get fields (keyword k))]
+                (or (and (not field-schema)
+                         (format "Unexpected field: %s" (name k)))
+                    (when-let [error (error v field-schema)]
+                      (format "[%s: %s]" (name k) error))))))
+      (and (not *ignore-required-fields*)
+           (some identity
+                 (for [[field-name schema] fields]
+                   (and (:required schema)
+                        (not-any? #(contains? node %)
+                                  ((juxt keyword name) field-name))
+                        (format "Missing required field: %s" (name field-name))))))))
+
+(defmethod error :map [node schema]
+  (or (and node (not (map? node))
+           (format "Expected map, found %s" (class node)))
+      (let [{key-schema :keys, val-schema :values} schema]
+        (some identity
+              (for [[k v] node]
+                (if-let [error (error k key-schema)]
+                  (format "[Invalid key %s: %s]" (name k) error)
+                  (when-let [error (error v val-schema)]
+                    (format "[Invalid value for key %s: %s]" (name k error)))))))))
+
+(defmethod error :list [node schema]
+  (or (and node (not (sequential? node))
+           (format "Expected list, found %s" (class node)))
+      (let [item-schema (:values schema)]
+        (first (keep-indexed (fn [idx item]
+                               (when-let [error (error item item-schema)]
+                                 (format "[Item #%s: %s]" idx error))))))))
+
+(defmethod error :set [node schema]
+  (or (and node (not (coll? node))
+           (format "Expected set, found %s" (class node)))
+      (let [item-schema (:values schema)]
+        (some identity
+              (if (map? node)
+                (for [[k v] node]
+                  (or (and (not (boolean? v))
+                           (format "Value for existence-hash at key %s is non-boolean: %s"
+                                   (pr-str k) (class v)))
+                      (error k item-schema)))
+                (for [item node]
+                  (error item item-schema)))))))
+
+(defmethod error :enum [node schema]
+  (when-not (contains? (:values schema) node)
+    (format "Expected any of %s, got %s" (pr-str (list* (:values schema))) (pr-str node))))
+
+(defmethod error :default [node schema]
+  (when-not (matches? node schema)
+    (format "Expected %s, got %s" (name (:type schema)) (class node))))
+
 (declare combine)
 
 ;; only call if x and y are the same type of schema

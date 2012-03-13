@@ -89,3 +89,24 @@
 (deftest strings
   (let [schema (schema/struct {:id {:type :string}})]
     (is (schema/matches? {"id" "nothing"} schema))))
+
+(deftest error-reporting
+  (let [schema (schema/struct {:name (schema/struct {:first {:type :string}
+                                                     :last {:type :string}})
+                               :gender {:required true
+                                        :type :enum :values #{:male :female}}
+                               :phone-numbers {:type :set
+                                               :values {:type :int}}})]
+    (are [obj error-string] (-> (schema/error obj schema)
+                                (.contains error-string))
+         {:gender 5} "gender"
+         {:name {:first "dave"}} "gender"
+         {:gender :male :name {:first 10}} "name"
+         {:gender :female :phone-numbers {342 true, 294 "NOT BOOLEAN"}} "294"
+         {:gender :male   :phone-numbers {"TEST" true}} "String"
+         {:gender :male   :phone-numbers #{1 2 3 :etc}} "Keyword"
+         {:gender :female :notes "psychic powers"} "notes")
+
+    (are [obj] (not (schema/error obj schema))
+         {:gender :female}
+         {:gender :male :name {:first "mark"} :phone-numbers [1 2 3 4]})))
