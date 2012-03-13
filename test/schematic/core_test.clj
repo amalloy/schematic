@@ -40,7 +40,7 @@
   (let [schema {:type :enum
                 :values #{:this :that}}]
     (are [x] (schema/matches? x schema)
-         :this :that)
+         :this :that "this" "that")
     (are [x] (not (schema/matches? x schema))
          "bah" nil 5)))
 
@@ -118,5 +118,5 @@
          {:gender :female :notes "psychic powers"} "notes")
 
     (are [obj] (not (schema/error obj schema))
-         {:gender :female}
+         {:gender "female"}
          {:gender :male :name {:first "mark"} :phone-numbers [1 2 3 4]})))

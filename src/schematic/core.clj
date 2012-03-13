@@ -72,7 +72,11 @@
                                (matches? item item-schema))))))))
 
 (defmethod matches? :enum [node schema]
-  (contains? (:values schema) node))
+  (let [candidates (if (or (string? node) (keyword? node))
+                     ((juxt name keyword) node)
+                     [node])
+        expected (:values schema)]
+    (some #(contains? expected %) candidates)))
 
 (let [known-types {:int integer?
                    :long integer?
@@ -141,7 +145,7 @@
                   (error item item-schema)))))))
 
 (defmethod error :enum [node schema]
-  (when-not (contains? (:values schema) node)
+  (when-not (matches? node schema)
     (format "Expected any of %s, got %s" (pr-str (list* (:values schema))) (pr-str node))))
 
 (defmethod error :default [node schema]
