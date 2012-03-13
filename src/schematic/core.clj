@@ -2,7 +2,7 @@
   (:use [useful.fn :only [given]]
         [useful.string :only [classify]]
         [useful.utils :only [verify]])
-  (:refer-clojure :exclude [struct get-in])
+  (:refer-clojure :exclude [struct get-in select-keys])
   (:require [clojure.core :as core]))
 
 (defn- boolean? [x] ;; really? no boolean? function in core?
@@ -16,6 +16,11 @@
 
 (defn get-in [schema fields]
   (core/get-in schema (interleave (repeat :fields) fields)))
+
+(defn select-keys [schema keys]
+  (if (not= :struct (:type schema))
+    (throw (IllegalArgumentException. (format "Can't select keys from %s schema" (:type schema))))
+    (update-in schema [:fields] core/select-keys keys)))
 
 (def ^:dynamic *ignore-required-fields* false)
 

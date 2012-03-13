@@ -80,11 +80,21 @@
                         :required true))))
 
 (deftest selection
-  (is (= {:type :int}
-         (schema/get-in (schema/struct {:a {:type :struct
-                                            :fields {:a1 {:type :int}}}
-                                        :b {:type :enum :values #{1 2 3}}})
-                        [:a :a1]))))
+  (let [schema (schema/struct {:a {:type :struct
+                                   :fields {:a1 {:type :int}}}
+                               :b {:type :enum :values #{1 2 3}}
+                               :c {:type :struct
+                                   :fields {:c1 {:type :int}
+                                            :c2 {:type :int}
+                                            :c3 {:type :int}}}})]
+    (is (= {:type :int}
+           (schema/get-in schema [:a :a1])))
+    (is (= {:type :struct
+            :fields {:c2 {:type :int}
+                     :c3 {:type :int}}}
+           (-> schema
+               (schema/get-in [:c])
+               (schema/select-keys [:c2 :c3]))))))
 
 (deftest strings
   (let [schema (schema/struct {:id {:type :string}})]
