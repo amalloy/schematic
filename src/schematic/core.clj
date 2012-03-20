@@ -85,9 +85,10 @@
                    :boolean boolean?
                    :string string?}]
   (defmethod matches? :default [node schema]
-    (let [type (:type schema)]
-      (when-let [validator (get known-types type)]
-        (validator node)))))
+    (or (nil? node)
+        (let [type (:type schema)]
+          (when-let [validator (get known-types type)]
+            (validator node))))))
 
 
 (defmulti error (fn [node schema] (:type schema)))
@@ -184,6 +185,7 @@
   {:values (set (mapcat :values enums))})
 
 (defn combine
+  ([] {})
   ([schema]
      schema)
   ([x y]
