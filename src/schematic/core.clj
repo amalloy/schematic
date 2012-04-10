@@ -1,7 +1,8 @@
 (ns schematic.core
-  (:use [useful.fn :only [given]]
+  (:use [useful.fn :only [given to-fix]]
         [useful.string :only [classify]]
-        [useful.utils :only [verify]])
+        [useful.utils :only [verify]]
+        [useful.map :only [update update-each map-vals]])
   (:refer-clojure :exclude [struct get-in select-keys])
   (:require [clojure.core :as core]))
 
@@ -20,7 +21,7 @@
 (defn select-keys [schema keys]
   (if (not= :struct (:type schema))
     (throw (IllegalArgumentException. (format "Can't select keys from %s schema" (:type schema))))
-    (update-in schema [:fields] core/select-keys keys)))
+    (update schema :fields core/select-keys keys)))
 
 (def ^:dynamic *ignore-required-fields* false)
 
@@ -197,3 +198,32 @@
                      :type xt))))
   ([x y & more]
      (reduce combine (list* x y more))))
+
+(defn walk
+  "Traverse all child types of the given schema, calling inner on each, then call outer on the result."
+  [inner outer schema]
+  (outer
+   (case (:type schema)
+     :struct           (update schema :fields map-vals inner)
+     (:set :list :map) (-> schema
+                           (given :values (update :values inner))
+                           (given :keys   (update :keys   inner)))
+     schema)))
+
+(defn postwalk
+  "Perform a depth-first, post-order traversal of all types within the given schema, replacing each
+  and type with the result of calling f on it."
+  [f schema]
+  (walk (partial postwalk f) f schema))
+
+(defn prewalk
+  "Like postwalk, but do a pre-order traversal."
+  [f schema]
+  (walk (partial prewalk f) identity (f schema)))
+
+(defn dissoc-fields
+  "Traverse the given schema, removing the given fields at any level."
+  [schema & fields]
+  (prewalk (to-fix #(= :struct (:type %))
+                   #(apply update % :fields dissoc fields))
+           schema))

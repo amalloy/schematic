@@ -120,3 +120,18 @@
     (are [obj] (not (schema/error obj schema))
          {:gender "female"}
          {:gender :male :name {:first "mark"} :phone-numbers [1 2 3 4]})))
+
+(deftest dissoc-fields
+  (let [struct (schema/struct {:foo {:type :string}
+                               :bar {:type :string}})
+        schema (schema/struct {:foo struct
+                               :bar {:required true
+                                     :type :enum :values #{:a :b}}
+                               :bap {:type :int}
+                               :baz {:type :set
+                                     :values struct}})]
+    (is (= {:type :struct
+            :fields {:bar {:type :enum :required true :values #{:a :b}}
+                     :baz {:type :set :values {:type :struct
+                                               :fields {:bar {:type :string}}}}}}
+           (schema/dissoc-fields schema :foo :bap)))))
