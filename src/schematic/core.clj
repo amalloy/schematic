@@ -23,7 +23,7 @@
     (throw (IllegalArgumentException. (format "Can't select keys from %s schema" (:type schema))))
     (update schema :fields core/select-keys keys)))
 
-(def ^:dynamic *ignore-required-fields* false)
+(def ^{:dynamic true} *ignore-required-fields* false)
 
 (defmulti matches? (fn [node schema] (:type schema)))
 
