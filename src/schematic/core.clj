@@ -3,7 +3,7 @@
         [useful.string :only [classify]]
         [useful.utils :only [verify]]
         [useful.map :only [update update-each map-vals]])
-  (:refer-clojure :exclude [struct get-in select-keys])
+  (:refer-clojure :exclude [struct get-in assoc-in select-keys])
   (:require [clojure.core :as core]))
 
 (defn- boolean? [x] ;; really? no boolean? function in core?
@@ -17,6 +17,16 @@
 
 (defn get-in [schema fields]
   (core/get-in schema (interleave (repeat :fields) fields)))
+
+(defn assoc-in [outer keys inner]
+  (if-let [[k & ks] (seq keys)]
+    (case (:type outer)
+      (nil :struct) (-> outer
+                        (assoc :type :struct)
+                        (update-in [:fields k] assoc-in ks inner))
+      (throw (IllegalArgumentException. (format "Can't add %s field to non-struct schema %s"
+                                                k outer))))
+    inner))
 
 (defn select-keys [schema keys]
   (if (not= :struct (:type schema))
