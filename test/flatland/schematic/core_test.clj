@@ -1,6 +1,6 @@
-(ns schematic.core-test
+(ns flatland.schematic.core-test
   (:use clojure.test)
-  (:require [schematic.core :as schema]))
+  (:require [flatland.schematic.core :as schema]))
 
 (deftest basics
   (are [type right wrong] (let [schema {:type type}]

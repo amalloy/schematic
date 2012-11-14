@@ -1,8 +1,8 @@
-(ns schematic.core
-  (:use [useful.fn :only [given to-fix]]
-        [useful.string :only [classify]]
-        [useful.utils :only [verify]]
-        [useful.map :only [update update-each map-vals]])
+(ns flatland.schematic.core
+  (:use [flatland.useful.fn :only [given to-fix]]
+        [flatland.useful.string :only [classify]]
+        [flatland.useful.utils :only [verify]]
+        [flatland.useful.map :only [update update-each map-vals]])
   (:refer-clojure :exclude [struct get-in assoc-in select-keys])
   (:require [clojure.core :as core]))
 
