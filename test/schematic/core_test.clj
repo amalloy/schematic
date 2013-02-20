@@ -5,11 +5,28 @@
 (deftest basics
   (are [type right wrong] (let [schema {:type type}]
                             (and (schema/matches? right schema)
-                                 (not (schema/matches? wrong schema))))
+                                 (not (schema/matches? wrong schema))
+                                 (not (schema/error right schema))
+                                 (schema/error wrong schema)))
        :boolean true 3
        :int 3 3.5
        :double 3.4 "number"
        :string "string" 10))
+
+(deftest lists
+  (let [schema {:type :list
+                :values {:type :int}}
+        good [2 3 5 7 11 13]
+        bad [2 3 5 :horse 11 13]]
+    (is (schema/matches? good schema))
+    (is (not (schema/error good schema)))
+    (is (not (schema/matches? bad schema)))
+    (let [error (schema/error bad schema)]
+      (is error)
+      (are [fragment] (.contains error fragment)
+           "#3" ;; should mention the index of invalid item
+           "Keyword" ;; and the class
+           "int")))) ;; and the expected schema
 
 (deftest structs
   (let [schema {:type :struct
