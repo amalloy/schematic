@@ -73,7 +73,8 @@
       (let [item-schema (:values schema)]
         (first (keep-indexed (fn [idx item]
                                (when-let [error (error item item-schema)]
-                                 (format "[Item #%s: %s]" idx error))))))))
+                                 (format "[Item #%s: %s]" idx error)))
+                             node)))))
 
 (defmethod error :set [node schema]
   (or (and node (not (coll? node))
