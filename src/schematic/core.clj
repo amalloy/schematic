@@ -35,73 +35,6 @@
 
 (def ^{:dynamic true} *ignore-required-fields* false)
 
-(defmulti matches? (fn [node schema] (:type schema)))
-
-(defmethod matches? nil [node schema]
-  ;; if there's no schema, we say anything matches. for types with more specific needs
-  ;; (eg structs shouldn't have unexpected fields), make sure there is a schema before
-  ;; checking that it matches
-  true)
-
-(defmethod matches? :struct [node {:keys [fields]}]
-  (and (or (nil? node)
-           (map? node))
-       (every? true? (for [[k v] node]
-                       (let [field-schema (get fields (keyword k))]
-                         (and field-schema
-                              (matches? v field-schema)))))
-       (or *ignore-required-fields*
-           (every? true? (for [[field-name schema] fields
-                               :when (:required schema)]
-                           (some #(contains? node %)
-                                 ((juxt keyword name) field-name)))))))
-
-(defmethod matches? :map [node schema]
-  (or (nil? node)
-      (and (map? node)
-           (let [{key-schema :keys, val-schema :values} schema]
-             (every? true? (for [[k v] node]
-                             (and (matches? k key-schema)
-                                  (matches? v val-schema))))))))
-
-(defmethod matches? :list [node schema]
-  (or (nil? node)
-      (and (coll? node)
-           (let [item-schema (:values schema)]
-             (every? true? (for [item node]
-                             (matches? item item-schema)))))))
-
-(defmethod matches? :set [node schema]
-  (or (nil? node)
-      (and (coll? node)
-           (let [item-schema (:values schema)]
-             (every? true? (if (map? node)
-                             (for [[k v] node] ;; treat existence-hash as a set
-                               (and (boolean? v)
-                                    (matches? k item-schema)))
-                             (for [item node]
-                               (matches? item item-schema))))))))
-
-(defmethod matches? :enum [node schema]
-  (let [candidates (if (or (string? node) (keyword? node))
-                     ((juxt name keyword) node)
-                     [node])
-        expected (:values schema)]
-    (some #(contains? expected %) candidates)))
-
-(let [known-types {:int integer?
-                   :long integer?
-                   :double number?
-                   :float number?
-                   :boolean boolean?
-                   :string string?}]
-  (defmethod matches? :default [node schema]
-    (or (nil? node)
-        (let [type (:type schema)]
-          (when-let [validator (get known-types type)]
-            (validator node))))))
-
-
 (defmulti error (fn [node schema] (:type schema)))
 
 (defmethod error :struct [node {:keys [fields]}]
@@ -157,12 +90,34 @@
                   (error item item-schema)))))))
 
 (defmethod error :enum [node schema]
-  (when-not (matches? node schema)
-    (format "Expected any of %s, got %s" (pr-str (list* (:values schema))) (pr-str node))))
+  (let [candidates (if (or (string? node) (keyword? node))
+                     ((juxt name keyword) node)
+                     [node])
+        expected (:values schema)]
+    (when-not (some #(contains? expected %) candidates)
+      (format "Expected any of %s, got %s"
+              (pr-str (list* (:values schema))) (pr-str node)))))
 
-(defmethod error :default [node schema]
-  (when-not (matches? node schema)
-    (format "Expected %s, got %s" (name (:type schema)) (class node))))
+(let [known-types {:int integer?
+                   :long integer?
+                   :double number?
+                   :float number?
+                   :boolean boolean?
+                   :string string?}]
+  (defmethod error :default [node schema]
+    (let [type (:type schema)
+          validator (get known-types type)]
+      (cond (nil? node) nil ; Okay to have fields missing.
+            (nil? type) nil ; If there's no schema, we say anything matches. For types with more
+                            ; specific needs (eg structs shouldn't have unexpected fields), make
+                            ; sure there is a schema before checking that it matches.
+            (nil? validator) (format "Unrecognized schema [%s] for value [%s]"
+                                     (pr-str schema) (pr-str node))
+            (not (validator node)) (format "Expected %s, got %s"
+                                           (name type) (class node))))))
+
+(defn matches? [node schema]
+  (not (error node schema)))
 
 (declare combine)
 
