@@ -81,13 +81,22 @@
                     :right {:type :string}}}
         b {:type :struct
            :fields {:name {:type :string :required true}
-                    :value {:type :int}}}]
+                    :value {:type :int}}}
+        c {:type :struct
+           :fields {:name {:type :struct
+                           :fields {:first {:type :string}
+                                    :last {:type :string}}}}}]
     (is (= {:type :struct
             :fields {:left {:type :string}
                      :right {:type :string}
                      :name {:type :string :required true}
                      :value {:type :int :required true}}}
-           (schema/combine a b)))))
+           (schema/combine a b)))
+    (binding [schema/*throw-mismatches* false]
+      (is (not (schema/mismatches (schema/combine a b))))
+      (is (not (schema/mismatches (schema/combine a c))))
+      (is (= [[:name {:left :string :right :struct}]]
+             (schema/mismatches (schema/combine b c)))))))
 
 (deftest shortcuts
   (is (= {:type :struct
