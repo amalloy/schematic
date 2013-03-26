@@ -151,6 +151,8 @@
 (defmethod combine* :enum [enums]
   {:values (set (mapcat :values enums))})
 
+(def ^:dynamic *throw-mismatches* true)
+
 (defn combine
   ([] {})
   ([schema]
@@ -159,9 +161,16 @@
      (cond (nil? x) y
            (nil? y) x
            :else (let [[xt yt] (map :type [x y])]
-                   (verify (= xt yt) (format "Cannot combine schemas of types %s and %s" xt yt))
-                   (assoc (combine* [x y])
-                     :type xt))))
+
+                   (cond (= xt yt) (assoc (combine* [x y])
+                                     :type xt)
+                         *throw-mismatches*
+                         ,,(throw (IllegalArgumentException.
+                                   (format "Cannot combine schemas of types %s and %s"
+                                           xt yt)))
+                         (= xt :error) x
+                         :else {:type :error
+                                :left xt, :right yt}))))
   ([x y & more]
      (reduce combine (list* x y more))))
 
