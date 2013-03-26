@@ -1,4 +1,4 @@
-(defproject schematic "0.0.8-SNAPSHOT"
+(defproject schematic "0.0.8"
   :description "Define and compose schemas for describing data types, and check data against them."
   :url "https://github.com/flatland/schematic"
   :dependencies [[org.clojure/clojure "1.4.0"]
