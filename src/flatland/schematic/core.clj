@@ -151,6 +151,45 @@
 (defmethod combine* :enum [enums]
   {:values (set (mapcat :values enums))})
 
+(declare ^:private mismatches*)
+
+(defn- collapse-mismatches [schema keys]
+  (for [k keys
+        path (mismatches* (get schema k))]
+    (cons k path)))
+
+(defmulti ^:private mismatches* :type)
+(defmethod mismatches* :default [_] nil)
+(defmethod mismatches* :error [s]
+  [[(core/select-keys s [:left :right])]])
+(defmethod mismatches* :struct [s]
+  (for [[k v] (:fields s)
+        path (mismatches* v)]
+    (cons k path)))
+(defmethod mismatches* :list [s]
+  (collapse-mismatches s [:values]))
+(defmethod mismatches* :set [s]
+  (collapse-mismatches s [:values]))
+(defmethod mismatches* :map [s]
+  (collapse-mismatches s [:keys :values]))
+
+(defn mismatches
+  "Searches through a schema combined with *throw-mismatches* false, locating all paths at which
+  errors are present. Returns nil if no errors exist."
+  [combined-schema]
+  (seq (mismatches* combined-schema)))
+
+(def ^:dynamic *throw-mismatches*
+  "When set (the default), attempts to combine irreconcilable schemas (such as combining a boolean
+  with a struct) will throw an exception. If this var is bound to false, then instead such attempts
+  will result in a schema with type :error. Be very careful when changing this setting: it is
+  intended primarily as a debugging aid, not as a production feature. In particular, this has the
+  effect of returning a map that looks like a valid schema but contains :error nodes buried within
+  it. A summary of the errors present can be obtained from the `mismatches` function, to help in
+  locating the problematic part of the schema, but this will be much slower than simply allowing an
+  exception to be thrown as soon as the attempt to combine is made."
+  true)
+
 (defn combine
   ([] {})
   ([schema]
@@ -159,9 +198,16 @@
      (cond (nil? x) y
            (nil? y) x
            :else (let [[xt yt] (map :type [x y])]
-                   (verify (= xt yt) (format "Cannot combine schemas of types %s and %s" xt yt))
-                   (assoc (combine* [x y])
-                     :type xt))))
+
+                   (cond (= xt yt) (assoc (combine* [x y])
+                                     :type xt)
+                         *throw-mismatches*
+                         ,,(throw (IllegalArgumentException.
+                                   (format "Cannot combine schemas of types %s and %s"
+                                           xt yt)))
+                         (= xt :error) x
+                         :else {:type :error
+                                :left xt, :right yt}))))
   ([x y & more]
      (reduce combine (list* x y more))))
 
