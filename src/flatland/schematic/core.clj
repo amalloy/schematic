@@ -132,7 +132,7 @@
 
 (defmethod combine* :map [maps]
   {:keys (apply combine (map :keys maps))
-   :vals (apply combine (map :vals maps))})
+   :values (apply combine (map :values maps))})
 
 (defmethod combine* :struct [structs]
   {:fields
