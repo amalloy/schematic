@@ -3,7 +3,7 @@
         [flatland.useful.string :only [classify]]
         [flatland.useful.utils :only [verify]]
         [flatland.useful.map :only [update update-each map-vals]])
-  (:refer-clojure :exclude [struct get-in assoc-in select-keys])
+  (:refer-clojure :exclude [struct get-in assoc-in select-keys update-in])
   (:require [clojure.core :as core]))
 
 (defn- boolean? [x] ;; really? no boolean? function in core?
@@ -23,10 +23,14 @@
     (case (:type outer)
       (nil :struct) (-> outer
                         (assoc :type :struct)
-                        (update-in [:fields k] assoc-in ks inner))
+                        (core/update-in [:fields k] assoc-in ks inner))
       (throw (IllegalArgumentException. (format "Can't add %s field to non-struct schema %s"
                                                 k outer))))
     inner))
+
+(defn update-in [schema keyseq f & args]
+  (assoc-in schema keyseq
+            (apply f (get-in schema keyseq) args)))
 
 (defn select-keys [schema keys]
   (if (not= :struct (:type schema))

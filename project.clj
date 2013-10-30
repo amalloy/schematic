@@ -1,4 +1,4 @@
-(defproject org.flatland/schematic "0.1.3"
+(defproject org.flatland/schematic "0.1.4"
   :description "Define and compose schemas for describing data types, and check data against them."
   :url "https://github.com/flatland/schematic"
   :license {:name "Eclipse Public License - v 1.0"
