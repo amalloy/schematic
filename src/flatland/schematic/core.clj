@@ -29,8 +29,11 @@
     inner))
 
 (defn update-in [schema keyseq f & args]
-  (assoc-in schema keyseq
-            (apply f (get-in schema keyseq) args)))
+  (let [old (get-in schema keyseq)
+        new (apply f old args)]
+    (if (identical? old new)
+      schema
+      (assoc-in schema keyseq new))))
 
 (defn select-keys [schema keys]
   (if (not= :struct (:type schema))
